@@ -118,36 +118,17 @@ func (u BuildGradleVersionUpdater) UpdateVersion(newVersionCode, versionCodeOffs
 			res.FinalVersionName = oldVersionName
 			res.RealVersionName = oldVersionName
 			updatedLine := ""
-			log.Printf("oldVersionName: %s, versionNameSuffix: %s, versionNameSep: %s", oldVersionName, versionNameSuffix, versionNameSep)
 			if versionNameSuffix != "" {
-				unquotedVersionNameSuffix := versionNameSuffix
-				unquotedVersionName := oldVersionName
-				unquotedversionNameSep := versionNameSep
-				if !(strings.HasPrefix(unquotedVersionName, `"`) && strings.HasSuffix(unquotedVersionName, `"`)) {
-					unquotedVersionName = strings.TrimPrefix(unquotedVersionName, `"`)
-					unquotedVersionName = strings.TrimSuffix(unquotedVersionName, `"`)
-				}
 
-				if !(strings.HasPrefix(unquotedversionNameSep, `"`) && strings.HasSuffix(unquotedversionNameSep, `"`)) {
-					unquotedversionNameSep = strings.TrimPrefix(unquotedversionNameSep, `"`)
-					unquotedversionNameSep = strings.TrimSuffix(unquotedversionNameSep, `"`)
-				}
-
-				if !(strings.HasPrefix(unquotedVersionNameSuffix, `"`) && strings.HasSuffix(unquotedVersionNameSuffix, `"`)) {
-					unquotedVersionNameSuffix = strings.TrimPrefix(unquotedVersionNameSuffix, `"`)
-					unquotedVersionNameSuffix = strings.TrimSuffix(unquotedVersionNameSuffix, `"`)
-				}
-
-				log.Printf("Processed quotations - unquotedVersionNameSuffix: %s, unquotedVersionName: %s, unquotedversionNameSep: %s", unquotedVersionNameSuffix, unquotedVersionName, unquotedversionNameSep)
-
-				quotedVersionName := ""
-				if unquotedversionNameSep != "" {
-					quotedVersionName = `"` + unquotedVersionName + unquotedversionNameSep + unquotedVersionNameSuffix + `"`
-					log.Printf("final version name - %s", quotedVersionName)
+				versionName := ""
+				if versionNameSep != "" {
+					versionName = oldVersionName + versionNameSep + versionNameSuffix
 				} else {
-					quotedVersionName = `"` + unquotedVersionName + "-" + unquotedVersionNameSuffix + `"`
-					log.Printf("final version name with default seperator - %s", quotedVersionName)
+					versionName = oldVersionName + "-" + versionNameSuffix
 				}
+
+				quotedVersionName := `"` + strings.Replace(versionName, "\"", "", -1) + `"`
+				log.Printf("final version name - %s", quotedVersionName)
 
 				res.FinalVersionName = quotedVersionName
 				res.RealVersionName = oldVersionName
