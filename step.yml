@@ -1,4 +1,4 @@
-title: Change Android versionCode and versionName
+title: FR - Change Android versionCode and add versionName suffix
 summary: Updates the Android versionCode and versionName in your project's `build.gradle` file.
 description: |-
   Modifies the version information of your Android app by updating versionCode and versionName attributes in your project's `build.gradle` file before you'd publish your app to Google Play Store.
@@ -50,7 +50,7 @@ run_if: ""
 
 toolkit:
   go:
-    package_name: github.com/bitrise-steplib/steps-change-android-versioncode-and-versionname
+    package_name: github.com/akshaykale/steps-change-android-versioncode-and-versionname
 
 inputs:
   - build_gradle_path: $BITRISE_SOURCE_DIR/app/build.gradle
@@ -58,13 +58,24 @@ inputs:
       title: Path to the build.gradle file
       summary: Path to the build.gradle file shows the versionCode and versionName settings.
       is_required: true
-  - new_version_name:
+  - version_name_seperator: 
     opts:
-      title: New versionName
+      title: versionName and suffix seperator
       summary: |-
-        New versionName to set.
+        Add a seperattor to version name andd suffix. Default "-".
       description: |-
-        New versionName to set.  
+        Add a seperattor to version name andd suffix.
+        Default "-"
+        Specify a string value, such as `"1.0.0"`.  
+        If the specified value is not surranded by double quote (`"`) characters, the step will add them.  
+        Leave this input empty so that versionName remains unchanged.
+  - version_name_suffix:
+    opts:
+      title: versionName suffix
+      summary: |-
+        Add suffix to version name.
+      description: |-
+        Add suffix to version name.  
         Specify a string value, such as `"1.0.0"`.  
         If the specified value is not surranded by double quote (`"`) characters, the step will add them.  
         Leave this input empty so that versionName remains unchanged.

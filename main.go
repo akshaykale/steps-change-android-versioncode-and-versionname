@@ -24,7 +24,8 @@ const (
 
 type config struct {
 	BuildGradlePth    string `env:"build_gradle_path,file"`
-	NewVersionName    string `env:"new_version_name"`
+	VersionNameSep    string `env:"version_name_seperator"`
+	VersionNameSuffix string `env:"version_name_suffix"`
 	NewVersionCode    int    `env:"new_version_code,range]0..2100000000]"`
 	VersionCodeOffset int    `env:"version_code_offset"`
 }
@@ -86,12 +87,13 @@ type UpdateResult struct {
 	NewContent          string
 	FinalVersionCode    string
 	FinalVersionName    string
+	RealVersionName     string
 	UpdatedVersionCodes int
 	UpdatedVersionNames int
 }
 
 // UpdateVersion executes the version updates.
-func (u BuildGradleVersionUpdater) UpdateVersion(newVersionCode, versionCodeOffset int, newVersionName string) (UpdateResult, error) {
+func (u BuildGradleVersionUpdater) UpdateVersion(newVersionCode, versionCodeOffset int, versionNameSep, versionNameSuffix string) (UpdateResult, error) {
 	res := UpdateResult{}
 	var err error
 
@@ -114,18 +116,41 @@ func (u BuildGradleVersionUpdater) UpdateVersion(newVersionCode, versionCodeOffs
 		regexp.MustCompile(versionNameRegexPattern): func(line string, lineNum int, match []string) string {
 			oldVersionName := match[1]
 			res.FinalVersionName = oldVersionName
+			res.RealVersionName = oldVersionName
 			updatedLine := ""
-
-			if newVersionName != "" {
-				quotedNewVersionName := newVersionName
-				if !(strings.HasPrefix(quotedNewVersionName, `"`) && strings.HasSuffix(quotedNewVersionName, `"`)) {
-					quotedNewVersionName = strings.TrimPrefix(quotedNewVersionName, `"`)
-					quotedNewVersionName = strings.TrimSuffix(quotedNewVersionName, `"`)
-					quotedNewVersionName = `"` + quotedNewVersionName + `"`
-					log.Warnf(`Leading and/or trailing " character missing from new_version_name, adding quotation char: %s -> %s`, newVersionName, quotedNewVersionName)
+			log.Printf("oldVersionName: %s, versionNameSuffix: %s, versionNameSep: %s", oldVersionName, versionNameSuffix, versionNameSep)
+			if versionNameSuffix != "" {
+				unquotedVersionNameSuffix := versionNameSuffix
+				unquotedVersionName := oldVersionName
+				unquotedversionNameSep := versionNameSep
+				if !(strings.HasPrefix(unquotedVersionName, `"`) && strings.HasSuffix(unquotedVersionName, `"`)) {
+					unquotedVersionName = strings.TrimPrefix(unquotedVersionName, `"`)
+					unquotedVersionName = strings.TrimSuffix(unquotedVersionName, `"`)
 				}
 
-				res.FinalVersionName = quotedNewVersionName
+				if !(strings.HasPrefix(unquotedversionNameSep, `"`) && strings.HasSuffix(unquotedversionNameSep, `"`)) {
+					unquotedversionNameSep = strings.TrimPrefix(unquotedversionNameSep, `"`)
+					unquotedversionNameSep = strings.TrimSuffix(unquotedversionNameSep, `"`)
+				}
+
+				if !(strings.HasPrefix(unquotedVersionNameSuffix, `"`) && strings.HasSuffix(unquotedVersionNameSuffix, `"`)) {
+					unquotedVersionNameSuffix = strings.TrimPrefix(unquotedVersionNameSuffix, `"`)
+					unquotedVersionNameSuffix = strings.TrimSuffix(unquotedVersionNameSuffix, `"`)
+				}
+
+				log.Printf("Processed quotations - unquotedVersionNameSuffix: %s, unquotedVersionName: %s, unquotedversionNameSep: %s", unquotedVersionNameSuffix, unquotedVersionName, unquotedversionNameSep)
+
+				quotedVersionName := ""
+				if unquotedversionNameSep != "" {
+					quotedVersionName = `"` + unquotedVersionName + unquotedversionNameSep + unquotedVersionNameSuffix + `"`
+					log.Printf("final version name - %s", quotedVersionName)
+				} else {
+					quotedVersionName = `"` + unquotedVersionName + "-" + unquotedVersionNameSuffix + `"`
+					log.Printf("final version name with default seperator - %s", quotedVersionName)
+				}
+
+				res.FinalVersionName = quotedVersionName
+				res.RealVersionName = oldVersionName
 				updatedLine = strings.Replace(line, oldVersionName, res.FinalVersionName, -1)
 				res.UpdatedVersionNames++
 				log.Printf("updating line (%d): %s -> %s", lineNum, line, updatedLine)
@@ -148,8 +173,8 @@ func main() {
 	stepconf.Print(cfg)
 	fmt.Println()
 
-	if cfg.NewVersionName == "" && cfg.NewVersionCode == 0 {
-		failf("Neither NewVersionCode nor NewVersionName are provided, however one of them is required.")
+	if cfg.VersionNameSuffix == "" && cfg.NewVersionCode == 0 {
+		failf("Neither NewVersionCode nor VersionNameSuffix are provided, however one of them is required.")
 	}
 
 	//
@@ -163,7 +188,7 @@ func main() {
 	}
 
 	versionUpdater := NewBuildGradleVersionUpdater(f)
-	res, err := versionUpdater.UpdateVersion(cfg.NewVersionCode, cfg.VersionCodeOffset, cfg.NewVersionName)
+	res, err := versionUpdater.UpdateVersion(cfg.NewVersionCode, cfg.VersionCodeOffset, cfg.VersionNameSep, cfg.VersionNameSuffix)
 	if err != nil {
 		failf("Failed to update versions: %s", err)
 	}
@@ -171,8 +196,9 @@ func main() {
 	//
 	// export outputs
 	if err := exportOutputs(map[string]string{
-		"ANDROID_VERSION_NAME": res.FinalVersionName,
-		"ANDROID_VERSION_CODE": res.FinalVersionCode,
+		"ANDROID_VERSION_NAME":       res.RealVersionName,
+		"ANDROID_FINAL_VERSION_NAME": res.FinalVersionName,
+		"ANDROID_VERSION_CODE":       res.FinalVersionCode,
 	}); err != nil {
 		failf("Failed to export outputs, error: %s", err)
 	}
